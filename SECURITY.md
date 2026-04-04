@@ -38,7 +38,7 @@ Anthropic's API data policy: inputs are deleted after 7 days and are never used 
 
 **Layer 1: Manual mapping.** A local JSON file maps real values to placeholders. Example: "Charlotte" becomes "[USER]", "Empower" becomes "[COMPANY_A]". Replacements are applied longest first to prevent substring collisions (e.g., "charlottesweb-app" is replaced before "charlotte").
 
-**Layer 2: NER (Named Entity Recognition).** spaCy's en_core_web_sm model scans the text after manual replacements and catches PERSON, ORG, and GPE (location) entities that the manual mapping missed. Detected entities are replaced with sequential placeholders.
+**Layer 2: NER (Named Entity Recognition).** A transformers pipeline using dslim/bert-base-NER scans the original text (before manual replacements, to avoid false matches on placeholder text) and catches PER, ORG, and LOC entities that the manual mapping missed. Detected entities are replaced with sequential placeholders. Entities shorter than 2 characters are ignored. Entities that are substrings of allowlisted entries are also ignored (handles cases where the tokenizer splits a word, e.g., "GitH" from "GitHub").
 
 **Layer 3: Pattern matching.** URLs and email addresses are detected with regex and replaced with numbered placeholders.
 

@@ -130,18 +130,21 @@ flowchart TB
 ```mermaid
 flowchart LR
     TEXT["Raw chunk text"]
+    NER["transformers NER\ndslim/bert-base-NER\nPER, ORG, LOC"]
     M["Manual mapping\nLongest first replacement"]
-    NER["spaCy NER\nen_core_web_sm\nPERSON, ORG, GPE"]
+    NERAPPLY["Apply NER replacements\nfor uncovered entities"]
     RE["Regex\nURLs, emails"]
     OUT["Anonymized text"]
 
-    TEXT --> M --> NER --> RE --> OUT
+    TEXT --> NER
+    TEXT --> M
+    M --> NERAPPLY --> RE --> OUT
 
     ALLOW["Allowlist\nPublic names to skip"]
     ALLOW --> NER
 ```
 
-The manual mapping replaces known identifiers with bracketed placeholders (e.g., `[USER]`, `[COMPANY_A]`). Entries are sorted by key length descending so "charlottesweb-app" is replaced before "charlotte". spaCy NER then scans the partially anonymized text for entities the manual list missed, skipping any entity on the allowlist. Finally, regex catches URLs and email addresses.
+NER runs on the original text first so the model sees clean text without placeholder brackets. The manual mapping then replaces known identifiers with bracketed placeholders (e.g., `[USER]`, `[COMPANY_A]`), sorted by key length descending so "charlottesweb-app" is replaced before "charlotte". NER replacements are then applied for any entities that the manual mapping did not already cover. Finally, regex catches URLs and email addresses.
 
 De-anonymization reverses the process using the same mapping, also sorted by placeholder length to prevent substring collisions.
 
