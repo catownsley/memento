@@ -27,9 +27,11 @@ env/
 # Local artifacts
 audit.log
 
-# Anonymizer mapping contains real names and PII. Never commit.
+# Anonymizer files contain real names and PII. Never commit.
 anonymizer_mapping.json
 anonymizer_mapping*.json
+anonymizer_allowlist.json
+anonymizer_allowlist*.json
 
 # Transcripts contain private conversations. Never commit.
 transcripts/

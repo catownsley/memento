@@ -29,6 +29,9 @@ def get_config() -> dict:  # type: ignore[type-arg]
         "anonymizer_mapping": os.getenv(
             "ANONYMIZER_MAPPING", "anonymizer_mapping.json"
         ),
+        "anonymizer_allowlist": os.getenv(
+            "ANONYMIZER_ALLOWLIST", "anonymizer_allowlist.json"
+        ),
     }
 
 

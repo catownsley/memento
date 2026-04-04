@@ -14,7 +14,7 @@ import numpy as np
 import psycopg2
 from pgvector.psycopg2 import register_vector
 
-from src.anonymizer import anonymize, deanonymize, load_manual_mapping
+from src.anonymizer import anonymize, deanonymize, load_allowlist, load_manual_mapping
 from src.embeddings import embed_text
 
 
@@ -59,7 +59,11 @@ def search_similar_chunks(
     return results
 
 
-def build_context(chunks: list[dict], mapping: dict[str, str]) -> tuple[str, dict[str, str]]:  # type: ignore[type-arg]
+def build_context(
+    chunks: list[dict],  # type: ignore[type-arg]
+    mapping: dict[str, str],
+    allowlist: set[str] | None = None,
+) -> tuple[str, dict[str, str]]:
     """
     Build the context string from retrieved chunks, anonymizing each one.
 
@@ -71,7 +75,7 @@ def build_context(chunks: list[dict], mapping: dict[str, str]) -> tuple[str, dic
 
     for chunk in chunks:
         anonymized_content, chunk_mapping = anonymize(
-            chunk["content"], manual_mapping=mapping
+            chunk["content"], manual_mapping=mapping, allowlist=allowlist
         )
         context_parts.append(
             f"[{chunk['role']}]: {anonymized_content}"
@@ -90,6 +94,7 @@ def query(
     embedding_model: str = "all-MiniLM-L6-v2",
     retrieval_limit: int = 10,
     anonymizer_mapping_path: str = "anonymizer_mapping.json",
+    anonymizer_allowlist_path: str = "anonymizer_allowlist.json",
 ) -> dict:  # type: ignore[type-arg]
     """
     Run the full query pipeline.
@@ -117,7 +122,8 @@ def query(
 
     # Step 3: Anonymize
     manual_mapping = load_manual_mapping(anonymizer_mapping_path)
-    context, anon_mapping = build_context(chunks, manual_mapping)
+    allowlist = load_allowlist(anonymizer_allowlist_path)
+    context, anon_mapping = build_context(chunks, manual_mapping, allowlist=allowlist)
 
     # Step 4: Send to Claude API
     client = anthropic.Anthropic(api_key=anthropic_api_key)

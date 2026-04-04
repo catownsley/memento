@@ -32,6 +32,21 @@ def get_nlp():  # type: ignore[no-untyped-def]
     return _nlp
 
 
+def load_allowlist(allowlist_path: str) -> set[str]:
+    """
+    Load the NER allowlist from a JSON file.
+
+    The file should be a JSON array of strings that spaCy should
+    never anonymize, even if it detects them as named entities.
+    These are public names that do not identify the user.
+    """
+    path = Path(allowlist_path)
+    if not path.exists():
+        return set()
+    with open(path, "r", encoding="utf-8") as f:
+        return set(json.load(f))  # type: ignore[arg-type]
+
+
 def load_manual_mapping(mapping_path: str) -> dict[str, str]:
     """
     Load the manual anonymization mapping from a JSON file.
@@ -53,6 +68,7 @@ def load_manual_mapping(mapping_path: str) -> dict[str, str]:
 def anonymize(
     text: str,
     manual_mapping: dict[str, str] | None = None,
+    allowlist: set[str] | None = None,
     use_ner: bool = True,
 ) -> tuple[str, dict[str, str]]:
     """
@@ -87,17 +103,24 @@ def anonymize(
         counters: dict[str, int] = {"PERSON": 0, "ORG": 0, "GPE": 0}
         prefixes = {"PERSON": "Person", "ORG": "Organization", "GPE": "Location"}
 
+        safe_entities = allowlist or set()
+
         for ent in doc.ents:
-            if ent.label_ in counters and ent.text not in full_mapping.values():
-                # Check if this entity was already replaced by manual mapping
-                already_mapped = any(
-                    ent.text == placeholder for placeholder in full_mapping
-                )
-                if not already_mapped:
-                    counters[ent.label_] += 1
-                    placeholder = f"{prefixes[ent.label_]}_{counters[ent.label_]}"
-                    result = result.replace(ent.text, placeholder)
-                    full_mapping[placeholder] = ent.text
+            if ent.label_ not in counters:
+                continue
+            if ent.text in safe_entities:
+                continue
+            if ent.text in full_mapping.values():
+                continue
+            # Check if this entity was already replaced by manual mapping
+            already_mapped = any(
+                ent.text == placeholder for placeholder in full_mapping
+            )
+            if not already_mapped:
+                counters[ent.label_] += 1
+                placeholder = f"{prefixes[ent.label_]}_{counters[ent.label_]}"
+                result = result.replace(ent.text, placeholder)
+                full_mapping[placeholder] = ent.text
 
     # Strip URLs
     url_count = 0
