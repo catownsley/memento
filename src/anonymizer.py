@@ -15,7 +15,6 @@ from pathlib import Path
 
 import spacy
 
-
 _nlp = None
 
 
@@ -43,7 +42,7 @@ def load_allowlist(allowlist_path: str) -> set[str]:
     path = Path(allowlist_path)
     if not path.exists():
         return set()
-    with open(path, "r", encoding="utf-8") as f:
+    with open(path, encoding="utf-8") as f:
         return set(json.load(f))  # type: ignore[arg-type]
 
 
@@ -61,7 +60,7 @@ def load_manual_mapping(mapping_path: str) -> dict[str, str]:
     path = Path(mapping_path)
     if not path.exists():
         return {}
-    with open(path, "r", encoding="utf-8") as f:
+    with open(path, encoding="utf-8") as f:
         return json.load(f)  # type: ignore[no-any-return]
 
 

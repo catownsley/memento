@@ -30,7 +30,13 @@ exclude = '''
 [tool.ruff]
 line-length = 88
 target-version = "py312"
+extend-exclude = [
+    "tests",
+    ".venv",
+    "venv",
+]
 
+[tool.ruff.lint]
 select = [
     "E",      # pycodestyle errors
     "W",      # pycodestyle warnings
@@ -47,13 +53,7 @@ ignore = [
     "E501",   # Line too long (handled by Black)
 ]
 
-extend-exclude = [
-    "tests",
-    ".venv",
-    "venv",
-]
-
-[tool.ruff.isort]
+[tool.ruff.lint.isort]
 known-first-party = ["src"]
 
 [tool.ruff.lint.mccabe]

@@ -10,7 +10,6 @@ Sanitization runs during ingestion, before embedding and storage.
 
 import re
 
-
 # Patterns that look like prompt injection attempts.
 # These could appear in transcripts if a conversation included
 # discussion of prompt injection, so we flag rather than strip.

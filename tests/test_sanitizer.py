@@ -5,7 +5,6 @@ Verifies that memory poisoning vectors are caught during ingestion
 and that leaked secrets are redacted before storage.
 """
 
-import pytest
 
 from src.sanitizer import sanitize_chunk, validate_chunk
 

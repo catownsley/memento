@@ -7,7 +7,6 @@ Uses PostgreSQL with the pgvector extension for vector similarity search.
 import psycopg2
 from pgvector.psycopg2 import register_vector
 
-
 EMBEDDING_DIMENSIONS = 384  # all-MiniLM-L6-v2 output size
 
 
