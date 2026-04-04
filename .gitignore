@@ -27,6 +27,18 @@ env/
 # Local artifacts
 audit.log
 
+# Anonymizer mapping contains real names and PII. Never commit.
+anonymizer_mapping.json
+anonymizer_mapping*.json
+
+# Transcripts contain private conversations. Never commit.
+transcripts/
+*.jsonl
+
+# Database files
+*.db
+*.sql
+
 # Sentence-transformers model cache
 model_cache/
 

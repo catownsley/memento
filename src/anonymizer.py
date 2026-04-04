@@ -69,9 +69,11 @@ def anonymize(
     full_mapping: dict[str, str] = {}
     result = text
 
-    # Apply manual mapping first
+    # Apply manual mapping first, longest keys first to avoid
+    # partial matches (e.g., "charlottesweb-app" before "charlotte")
     if manual_mapping:
-        for real_value, placeholder in manual_mapping.items():
+        sorted_entries = sorted(manual_mapping.items(), key=lambda x: len(x[0]), reverse=True)
+        for real_value, placeholder in sorted_entries:
             if real_value in result:
                 result = result.replace(real_value, placeholder)
                 full_mapping[placeholder] = real_value
@@ -124,8 +126,12 @@ def deanonymize(text: str, mapping: dict[str, str]) -> str:
 
     The mapping should be the same dict returned by anonymize().
     Keys are placeholders, values are real strings.
+
+    Replacements are applied longest placeholder first to avoid
+    partial matches (e.g., "User" inside "/Users/user/").
     """
     result = text
-    for placeholder, real_value in mapping.items():
+    sorted_items = sorted(mapping.items(), key=lambda x: len(x[0]), reverse=True)
+    for placeholder, real_value in sorted_items:
         result = result.replace(placeholder, real_value)
     return result
