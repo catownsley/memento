@@ -1,0 +1,109 @@
+[build-system]
+requires = ["setuptools>=45", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "memento"
+version = "0.1.0"
+description = "Local RAG pipeline for persistent memory across Claude Code sessions"
+requires-python = ">=3.14"
+
+[tool.setuptools.packages.find]
+include = ["src*"]
+
+[tool.black]
+line-length = 88
+target-version = ['py312']
+exclude = '''
+/(
+    \.git
+    | \.venv
+    | venv
+    | __pycache__
+    | \.pytest_cache
+    | \.mypy_cache
+    | build
+    | dist
+)/
+'''
+
+[tool.ruff]
+line-length = 88
+target-version = "py312"
+
+select = [
+    "E",      # pycodestyle errors
+    "W",      # pycodestyle warnings
+    "F",      # Pyflakes (undefined names, unused imports)
+    "I",      # isort (import ordering)
+    "C90",    # McCabe complexity
+    "N",      # pep8-naming
+    "UP",     # pyupgrade (use modern Python syntax)
+    "B",      # flake8-bugbear (likely bugs)
+    "A",      # flake8-builtins (don't shadow builtins)
+]
+
+ignore = [
+    "E501",   # Line too long (handled by Black)
+]
+
+extend-exclude = [
+    "tests",
+    ".venv",
+    "venv",
+]
+
+[tool.ruff.isort]
+known-first-party = ["src"]
+
+[tool.ruff.lint.mccabe]
+max-complexity = 15
+
+[tool.mypy]
+python_version = "3.14"
+strict = true
+ignore_missing_imports = true
+warn_unused_ignores = true
+pretty = true
+
+disable_error_code = [
+    "no-any-return",
+    "type-arg",
+]
+
+exclude = [
+    "venv/",
+    ".venv/",
+    "build/",
+    "dist/",
+]
+
+[[tool.mypy.overrides]]
+module = "tests.*"
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "src.*"
+disable_error_code = ["misc"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = "-v --tb=short"
+markers = [
+    "integration: integration tests",
+    "unit: unit tests",
+]
+
+[tool.coverage.run]
+source = ["src"]
+omit = [
+    "*/__init__.py",
+]
+
+[tool.coverage.report]
+fail_under = 70
+precision = 2
+show_missing = true
