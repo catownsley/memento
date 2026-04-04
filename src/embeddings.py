@@ -8,7 +8,6 @@ No data is sent to any external service.
 import numpy as np
 from sentence_transformers import SentenceTransformer
 
-
 _model_cache: dict[str, SentenceTransformer] = {}
 
 

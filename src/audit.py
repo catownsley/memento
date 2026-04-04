@@ -9,7 +9,7 @@ The audit log file is gitignored and stays local.
 """
 
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 
@@ -29,7 +29,7 @@ def log_query(
         chunks_sent: number of anonymized chunks sent to the API
     """
     record = {
-        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "timestamp": datetime.now(UTC).isoformat(),
         "action": "QUERY_APPROVED" if approved else "QUERY_DENIED",
         "question_length": len(question),
         "chunks_sent": chunks_sent,
@@ -47,7 +47,7 @@ def read_audit_log(log_path: str = "audit.log") -> list[dict]:  # type: ignore[t
         return []
 
     records = []
-    with open(path, "r", encoding="utf-8") as f:
+    with open(path, encoding="utf-8") as f:
         for line in f:
             line = line.strip()
             if line:

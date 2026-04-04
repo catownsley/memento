@@ -18,7 +18,6 @@ from cryptography.fernet import Fernet
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 
-
 SALT_SIZE = 16
 KDF_ITERATIONS = 600_000  # NIST recommended minimum for PBKDF2-SHA256
 
@@ -119,13 +118,13 @@ def decrypt_mapping_files(password: str, mapping_path: str = "anonymizer_mapping
     if Path(mapping_enc).exists():
         mapping = load_encrypted_json(mapping_enc, password)  # type: ignore[assignment]
     elif Path(mapping_path).exists():
-        with open(mapping_path, "r") as f:
+        with open(mapping_path) as f:
             mapping = json.load(f)
 
     if Path(allowlist_enc).exists():
         allowlist = set(load_encrypted_json(allowlist_enc, password))  # type: ignore[arg-type]
     elif Path(allowlist_path).exists():
-        with open(allowlist_path, "r") as f:
+        with open(allowlist_path) as f:
             allowlist = set(json.load(f))
 
     return mapping, allowlist

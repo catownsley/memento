@@ -6,14 +6,11 @@ before it could be sent to the Claude API. If any test fails,
 it means identifying information would leak.
 """
 
-import json
-import re
 from pathlib import Path
 
 import pytest
 
 from src.anonymizer import anonymize, deanonymize, load_allowlist, load_manual_mapping
-
 
 MAPPING_PATH = "anonymizer_mapping.json"
 ALLOWLIST_PATH = "anonymizer_allowlist.json"
@@ -50,7 +47,7 @@ class TestNoLeaks:
         self, mapping: dict[str, str], allowlist: set[str]
     ) -> None:
         """Every value in the mapping must be replaced when present in text."""
-        for real_value, placeholder in mapping.items():
+        for real_value, _placeholder in mapping.items():
             text = f"This text contains {real_value} as a test."
             anonymized, _ = anonymize(text, manual_mapping=mapping, allowlist=allowlist)
             assert real_value not in anonymized, (

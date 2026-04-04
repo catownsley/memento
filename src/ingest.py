@@ -10,8 +10,6 @@ Orchestrates the full flow from transcript files to stored embeddings:
 6. Store chunks and embeddings in pgvector
 """
 
-import psycopg2
-from pgvector.psycopg2 import register_vector
 
 from src.config import get_config, validate_config
 from src.database import create_tables, get_connection
