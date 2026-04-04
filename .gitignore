@@ -32,6 +32,7 @@ anonymizer_mapping.json
 anonymizer_mapping*.json
 anonymizer_allowlist.json
 anonymizer_allowlist*.json
+*.enc
 
 # Transcripts contain private conversations. Never commit.
 transcripts/

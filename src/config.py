@@ -16,7 +16,7 @@ load_dotenv()
 def get_config() -> dict:  # type: ignore[type-arg]
     """Return the full configuration dictionary from environment variables."""
     return {
-        "database_url": os.getenv("DATABASE_URL", "postgresql://localhost/memento"),
+        "database_url": os.getenv("DATABASE_URL", ""),
         "anthropic_api_key": os.getenv("ANTHROPIC_API_KEY", ""),
         "transcript_dir": os.path.expanduser(
             os.getenv(
@@ -44,6 +44,14 @@ def validate_config(config: dict) -> list[str]:  # type: ignore[type-arg]
 
     if not config["anthropic_api_key"]:
         warnings.append("ANTHROPIC_API_KEY is not set. Query pipeline will not work.")
+
+    if not config["database_url"]:
+        warnings.append("DATABASE_URL is not set. No database connection available.")
+    elif "localhost/memento" in config["database_url"] and "@" not in config["database_url"]:
+        warnings.append(
+            "DATABASE_URL appears to use passwordless auth. "
+            "Set a password in the connection string."
+        )
 
     transcript_path = Path(config["transcript_dir"])
     if not transcript_path.exists():
