@@ -5,8 +5,9 @@ Orchestrates the full flow from transcript files to stored embeddings:
 1. Find transcript files that have not been ingested yet
 2. Parse each file into messages
 3. Chunk the messages
-4. Generate embeddings locally
-5. Store chunks and embeddings in pgvector
+4. Validate and sanitize each chunk (memory poisoning defense)
+5. Generate embeddings locally
+6. Store chunks and embeddings in pgvector
 """
 
 import psycopg2
@@ -16,6 +17,7 @@ from src.config import get_config, validate_config
 from src.database import create_tables, get_connection
 from src.embeddings import embed_batch
 from src.parser import chunk_messages, list_transcript_files, parse_transcript
+from src.sanitizer import sanitize_chunk, validate_chunk
 
 
 def get_ingested_files(database_url: str) -> set[str]:
@@ -54,6 +56,25 @@ def ingest_file(
         return 0
 
     chunks = chunk_messages(messages, conversation_id, max_chunk_size=max_chunk_size)
+    if not chunks:
+        return 0
+
+    # Validate and sanitize each chunk before storage
+    clean_chunks = []
+    for chunk in chunks:
+        is_valid, reason = validate_chunk(chunk["content"])
+        if not is_valid:
+            print(f"  Skipped chunk {chunk['chunk_index']}: {reason}")
+            continue
+
+        sanitized_content, warnings = sanitize_chunk(chunk["content"])
+        for warning in warnings:
+            print(f"  WARNING chunk {chunk['chunk_index']}: {warning}")
+
+        chunk["content"] = sanitized_content
+        clean_chunks.append(chunk)
+
+    chunks = clean_chunks
     if not chunks:
         return 0
 

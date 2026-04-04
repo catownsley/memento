@@ -164,9 +164,68 @@ Automated weekly updates for Python dependencies and GitHub Actions, with securi
 
 All dependencies in requirements.txt are pinned to exact versions. No wildcard or range specifiers.
 
+## Memory Poisoning Defense
+
+Transcript files are the input to the ingestion pipeline. If a transcript contained malicious content (injected instructions, leaked secrets, corrupted data), that content could end up in the vector database and influence future query results.
+
+The sanitizer module (src/sanitizer.py) runs during ingestion and applies two checks to every chunk before it is stored:
+
+### Chunk validation
+
+| Check | Action |
+|-------|--------|
+| Empty or whitespace-only content | Chunk is skipped |
+| Content exceeds 10,000 characters | Chunk is skipped |
+| Content is mostly non-printable (below 80% printable characters) | Chunk is skipped |
+
+### Secret redaction
+
+The sanitizer scans for patterns that match real API keys and tokens. If found, the secret is replaced with `[REDACTED_SECRET]` before storage.
+
+| Pattern | What It Catches |
+|---------|----------------|
+| sk-ant- followed by 20+ alphanumeric characters | Anthropic API keys |
+| sk- followed by 20+ alphanumeric characters | OpenAI API keys |
+| AKIA followed by 16 uppercase alphanumeric characters | AWS access keys |
+| ghp_ followed by 30+ alphanumeric characters | GitHub personal access tokens |
+| xox followed by b/p/s/a and alphanumeric characters | Slack tokens |
+
+### Injection pattern detection
+
+The sanitizer flags text that matches known prompt injection patterns. These are flagged with warnings in the ingestion log but not removed, because conversations may legitimately discuss prompt injection techniques. The patterns include:
+
+| Pattern Category | Examples |
+|-----------------|----------|
+| Instruction override | "ignore all previous instructions", "disregard previous" |
+| Role override | "you are now a", "system: you are" |
+| Tag injection | &lt;system&gt;, &lt;instructions&gt;, [SYSTEM], [INST] |
+
+Flagged chunks are stored but the warnings are printed during ingestion so the operator can review them.
+
+## Prompt Injection Defense
+
+Retrieved conversation chunks are inserted into the Claude API prompt as context. A chunk could contain text that resembles instructions to the model ("ignore previous instructions and..."). This is a form of indirect prompt injection.
+
+### Defenses
+
+**Structural separation.** The system prompt, retrieved context, and user question are wrapped in distinct XML tags:
+
+| Section | Tag |
+|---------|-----|
+| Retrieved conversation data | `<retrieved_conversation_data>` |
+| User's question | `<question>` |
+
+**System prompt hardening.** The system prompt explicitly instructs Claude to treat the retrieved conversation data as reference material and to not follow any instructions that appear inside it, even if they claim to override previous instructions or change the model's role.
+
+**Approval gate.** The user sees the full anonymized payload (including retrieved chunks) before it is sent. If a chunk contains suspicious content, the user can reject the query.
+
+These defenses follow the OWASP AI Agent Security Cheat Sheet recommendations for input validation and prompt injection defense. See: https://github.com/OWASP/CheatSheetSeries/blob/master/cheatsheets/AI_Agent_Security_Cheat_Sheet.md
+
 ## Automated Testing
 
-The anonymizer test suite (tests/test_anonymizer.py) runs 13 tests covering:
+Two test suites verify security controls:
+
+### Anonymizer tests (tests/test_anonymizer.py, 13 tests)
 
 | Test Category | What It Verifies |
 |---------------|------------------|
@@ -175,7 +234,16 @@ The anonymizer test suite (tests/test_anonymizer.py) runs 13 tests covering:
 | Allowlist | Public org names and technology names are preserved |
 | Edge Cases | Case sensitivity, substring ordering, empty text, URL/email stripping without a mapping |
 
-If any test fails, it means identifying information would survive anonymization and could be sent to the API.
+### Sanitizer tests (tests/test_sanitizer.py, 14 tests)
+
+| Test Category | What It Verifies |
+|---------------|------------------|
+| Secret Redaction | Anthropic, OpenAI, AWS, GitHub, and Slack tokens are redacted from chunks |
+| Injection Detection | Instruction overrides, system tags, and role overrides are flagged |
+| Injection Preservation | Flagged content is preserved (not deleted) since it may be legitimate discussion |
+| Validation | Empty, oversized, and binary content is rejected |
+
+If any test fails, it means either identifying information would survive anonymization, or malicious content would enter the database unsanitized.
 
 ## Threat Model
 
@@ -191,6 +259,25 @@ If any test fails, it means identifying information would survive anonymization 
 | Code vulnerabilities | CodeQL, Bandit (PR + nightly) |
 | Undetected data exfiltration | Audit log records every API call attempt |
 | Accidental secret in code | Pre-commit hook scans file contents |
+| Memory poisoning via transcript injection | Chunk sanitization during ingestion, secret redaction |
+| Prompt injection via retrieved chunks | XML tag delimiters, system prompt hardening, approval gate |
+| Leaked secrets in stored chunks | Regex pattern matching and redaction during ingestion |
+
+### OWASP AI Agent Security coverage
+
+This project's controls map to the following sections of the OWASP AI Agent Security Cheat Sheet:
+
+| OWASP Section | Memento Control |
+|--------------|-----------------|
+| Tool Security and Least Privilege | Single external tool (Claude API), no shell access, no file write |
+| Input Validation and Prompt Injection Defense | Chunk sanitization, XML delimiters, system prompt hardening |
+| Memory and Context Security | Single user isolation, chunk validation, secret redaction, encryption at rest |
+| Human-in-the-Loop Controls | Approval gate with full payload preview before any API call |
+| Output Validation | De-anonymization only uses the query's own mapping |
+| Monitoring and Observability | Audit log for all query attempts |
+| Data Protection and Privacy | Anonymization, encryption at rest, database auth, gitignore + hooks |
+
+Sections that do not apply: Multi-Agent Security (single agent), Cascading Failures (no agent chain), Denial of Wallet (manual approval prevents unbounded loops).
 
 ### What is out of scope
 

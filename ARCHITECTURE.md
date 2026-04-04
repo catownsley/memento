@@ -49,6 +49,10 @@ flowchart LR
         P["parser.py\nReads JSONL\nExtracts messages\nSplits into chunks"]
     end
 
+    subgraph Sanitize
+        S["sanitizer.py\nValidate chunks\nRedact leaked secrets\nFlag injection patterns"]
+    end
+
     subgraph Embed
         E["embeddings.py\nsentence-transformers\nall-MiniLM-L6-v2\n384 dimensions"]
     end
@@ -61,13 +65,15 @@ flowchart LR
         LOG["ingestion_log table\nfile path, size\nchunks created\ntimestamp"]
     end
 
-    F --> P --> E --> DB
+    F --> P --> S --> E --> DB
     DB --> LOG
 ```
 
 ### Components
 
 **parser.py** reads Claude Code's `.jsonl` transcript format. Each line is a JSON object. Messages are nested inside a `message` field on entries with `type` set to "user" or "assistant". The parser extracts text content from message blocks, skipping tool use, thinking, and system entries. Long messages are split at sentence boundaries into chunks of 1000 characters or fewer.
+
+**sanitizer.py** validates and sanitizes each chunk before storage. This is the memory poisoning defense. It rejects empty, oversized, or binary chunks. It redacts any leaked API keys or tokens (Anthropic, OpenAI, AWS, GitHub, Slack patterns). It flags text matching known prompt injection patterns (instruction overrides, role overrides, tag injection) with warnings but preserves the content, since conversations may legitimately discuss these topics.
 
 **embeddings.py** loads the sentence-transformers model (all-MiniLM-L6-v2 by default) and generates 384-dimensional vectors for each chunk. The model runs locally on CPU. Batch encoding is used for efficiency during ingestion. The model is cached in memory after first load.
 
@@ -257,6 +263,7 @@ memento/
         parser.py                    Transcript parsing, chunking
         embeddings.py                Local vector generation
         anonymizer.py                PII removal (mapping + NER + regex)
+        sanitizer.py                 Chunk validation and secret redaction
         encryption.py                Fernet encryption for mapping files
         audit.py                     Query event logging
         query.py                     Full query pipeline orchestration
@@ -264,6 +271,7 @@ memento/
     tests/
         __init__.py
         test_anonymizer.py           13 tests for PII leak detection
+        test_sanitizer.py            14 tests for memory poisoning defense
     .env.example                     Configuration template
     .gitignore                       Blocks PII files from version control
     .pre-commit-config.yaml          8 pre-commit hooks
