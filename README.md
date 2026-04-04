@@ -71,7 +71,7 @@ This project handles private conversation data. Security is not an afterthought.
 
 1. **Manual mapping:** A local JSON file maps real names, companies, usernames, URLs, and file paths to bracketed placeholders. Longest replacements applied first to prevent substring collisions.
 
-2. **NER (Named Entity Recognition):** spaCy scans text after manual replacements and catches any PERSON, ORG, or location entities the manual list missed.
+2. **NER (Named Entity Recognition):** A transformers pipeline (dslim/bert-base-NER) scans text and catches any PERSON, ORG, or location entities the manual list missed. Runs locally, no API call.
 
 3. **Pattern matching:** URLs and email addresses are detected with regex and replaced.
 
@@ -123,7 +123,7 @@ For full details, see [SECURITY.md](SECURITY.md).
 | Transcript parsing | Python | Local |
 | Embeddings | sentence-transformers (all-MiniLM-L6-v2) | Local |
 | Vector storage | PostgreSQL 17 + pgvector 0.8.2 | Local |
-| Anonymization | spaCy NER + manual mapping + regex | Local |
+| Anonymization | transformers NER + manual mapping + regex | Local |
 | Encryption | Fernet + PBKDF2 (cryptography library) | Local |
 | Query LLM | Claude API (anthropic SDK) | API call, anonymized data only |
 | Audit | Local JSONL log | Local |
@@ -192,7 +192,7 @@ Update pg_hba.conf to require scram-sha-256 authentication and restart PostgreSQ
 python -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
-python -m spacy download en_core_web_sm
+# NER model downloads automatically on first use
 ```
 
 ### Configuration
