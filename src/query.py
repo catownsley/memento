@@ -67,48 +67,108 @@ def build_context(
     chunks: list[dict],  # type: ignore[type-arg]
     mapping: dict[str, str],
     allowlist: set[str] | None = None,
-) -> tuple[str, dict[str, str]]:
+) -> tuple[list[str], dict[str, str]]:
     """
-    Build the context string from retrieved chunks, anonymizing each one.
+    Anonymize each chunk individually.
 
-    Returns the full anonymized context string and the combined mapping
+    Returns a list of anonymized chunk strings and the combined mapping
     for de-anonymization.
     """
-    context_parts = []
+    anonymized_chunks = []
     full_mapping: dict[str, str] = {}
 
     for chunk in chunks:
         anonymized_content, chunk_mapping = anonymize(
             chunk["content"], manual_mapping=mapping, allowlist=allowlist
         )
-        context_parts.append(
+        anonymized_chunks.append(
             f"[{chunk['role']}]: {anonymized_content}"
         )
         full_mapping.update(chunk_mapping)
 
-    context = "\n\n".join(context_parts)
-    return context, full_mapping
+    return anonymized_chunks, full_mapping
 
 
-def preview_payload(context: str, question: str) -> str:
+def assemble_context(anonymized_chunks: list[str]) -> str:
+    """Join selected anonymized chunks into a single context string."""
+    return "\n\n".join(anonymized_chunks)
+
+
+def preview_chunks(
+    anonymized_chunks: list[str],
+    question: str,
+) -> str:
     """
-    Format the full payload that would be sent to the Claude API
-    so the user can review it before approving.
+    Format the anonymized chunks with numbers so the user can
+    review each one individually and drop specific chunks
+    before sending.
     """
     divider = "=" * 60
-    return (
-        f"\n{divider}\n"
-        f"OUTBOUND PAYLOAD PREVIEW\n"
-        f"The following text will be sent to the Claude API.\n"
-        f"Review it for any identifying information that should\n"
-        f"not leave this machine.\n"
-        f"{divider}\n\n"
-        f"[CONTEXT BEING SENT]\n\n"
-        f"{context}\n\n"
-        f"[QUESTION BEING SENT]\n\n"
-        f"{question}\n\n"
-        f"{divider}\n"
-    )
+    chunk_divider = "-" * 40
+    parts = [
+        f"\n{divider}",
+        "OUTBOUND PAYLOAD PREVIEW",
+        "Review each chunk below. You can drop specific chunks",
+        "by number before sending.",
+        divider,
+        "",
+    ]
+
+    for i, chunk in enumerate(anonymized_chunks):
+        parts.append(f"[CHUNK {i + 1} of {len(anonymized_chunks)}]")
+        parts.append(chunk)
+        parts.append(chunk_divider)
+
+    parts.append(f"\n[QUESTION]\n{question}")
+    parts.append(f"\n{divider}")
+
+    return "\n".join(parts)
+
+
+def get_approval_with_selection(
+    anonymized_chunks: list[str],
+    question: str,
+) -> list[int] | None:
+    """
+    Show the numbered chunks and ask the user which to keep.
+
+    Returns a list of chunk indices to send, or None if the
+    user cancels entirely.
+
+    User options:
+        yes         send all chunks
+        no          cancel, send nothing
+        drop 3,5    remove chunks 3 and 5, send the rest
+    """
+    print(preview_chunks(anonymized_chunks, question))
+    print("\nOptions:")
+    print("  yes          Send all chunks")
+    print("  no           Cancel, send nothing")
+    print("  drop 3,5     Remove chunks 3 and 5, send the rest")
+    print()
+
+    response = input("Your choice: ").strip().lower()
+
+    if response == "no":
+        return None
+
+    if response == "yes":
+        return list(range(len(anonymized_chunks)))
+
+    if response.startswith("drop "):
+        try:
+            drop_nums = response[5:].split(",")
+            drop_indices = {int(n.strip()) - 1 for n in drop_nums}
+            keep = [i for i in range(len(anonymized_chunks)) if i not in drop_indices]
+            dropped_count = len(anonymized_chunks) - len(keep)
+            print(f"\nDropped {dropped_count} chunk(s). Sending {len(keep)} chunk(s).")
+            return keep
+        except ValueError:
+            print("Could not parse chunk numbers. Cancelling.")
+            return None
+
+    print("Unrecognized input. Cancelling.")
+    return None
 
 
 def query(
@@ -164,13 +224,12 @@ def query(
     else:
         manual_mapping = load_manual_mapping(anonymizer_mapping_path)
         allowlist = load_allowlist(anonymizer_allowlist_path)
-    context, anon_mapping = build_context(chunks, manual_mapping, allowlist=allowlist)
+    anonymized_chunks, anon_mapping = build_context(chunks, manual_mapping, allowlist=allowlist)
 
-    # Step 4: Preview and approve
+    # Step 4: Preview and approve with chunk selection
     if require_approval:
-        print(preview_payload(context, question))
-        approval = input("Send this to Claude API? (yes/no): ").strip().lower()
-        if approval != "yes":
+        selected_indices = get_approval_with_selection(anonymized_chunks, question)
+        if selected_indices is None:
             log_query(
                 question=question,
                 chunks_sent=0,
@@ -182,6 +241,9 @@ def query(
                 "chunks_used": 0,
                 "anonymization_mapping": {},
             }
+        anonymized_chunks = [anonymized_chunks[i] for i in selected_indices]
+
+    context = assemble_context(anonymized_chunks)
 
     # Step 5: Send to Claude API
     client = anthropic.Anthropic(api_key=anthropic_api_key)
@@ -223,13 +285,13 @@ def query(
     # Step 7: Audit log
     log_query(
         question=question,
-        chunks_sent=len(chunks),
+        chunks_sent=len(anonymized_chunks),
         approved=True,
         log_path=audit_log_path,
     )
 
     return {
         "answer": answer,
-        "chunks_used": len(chunks),
+        "chunks_used": len(anonymized_chunks),
         "anonymization_mapping": anon_mapping,
     }
