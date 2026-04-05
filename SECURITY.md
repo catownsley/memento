@@ -28,9 +28,9 @@ All data processing and storage runs locally. The only external call is to the C
 
 ### What goes to the Claude API
 
-Retrieved conversation chunks, after passing through the anonymization layer. The anonymization layer strips all identifying information (names, companies, usernames, URLs, email addresses, file paths, dates) and replaces them with bracketed placeholders. The substance of the conversation is preserved because it is not identifying on its own.
+Only the retrieved conversation chunks, after passing through the anonymization layer, are sent to Claud API. The anonymization layer strips all identifying information (names, companies, usernames, URLs, email addresses, file paths, dates) and replaces them with bracketed placeholders. The substance of the conversation is preserved because it is not identifying on its own.
 
-Anthropic's API data policy: inputs are deleted after 7 days and are never used for model training.
+Anthropic's API data policy specify that inputs are deleted after 7 days and are never used for model training.
 
 ## Anonymization
 
