@@ -47,3 +47,7 @@ model_cache/
 
 # spaCy models
 spacy_models/
+
+# Private working files (never commit)
+linkedin_draft.md
+pond5_catalog*.csv
