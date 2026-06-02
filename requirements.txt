@@ -1,4 +1,4 @@
-anthropic==0.97.0
+anthropic==0.105.2
 psycopg2-binary==2.9.12
 pgvector==0.4.2
 sentence-transformers==5.4.1
