@@ -82,4 +82,8 @@ jobs:
 
       - name: Scan dependencies for vulnerabilities
         run: |
-          pip-audit -r requirements.txt --desc
+          # Accepted risk: CVE-2025-3000 (torch). Memory corruption via torch.jit.script,
+          # local attack vector only, no fixed version published as of 2026-06-11. memento runs
+          # locally over trusted data and never passes untrusted input to torch.jit.script.
+          # Remove this ignore once PyTorch ships a patched release.
+          pip-audit -r requirements.txt --desc --ignore-vuln CVE-2025-3000
