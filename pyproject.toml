@@ -7,6 +7,7 @@ name = "memento"
 version = "0.1.0"
 description = "Local RAG pipeline for persistent memory across Claude Code sessions"
 requires-python = ">=3.14"
+license = "GPL-3.0-only"
 
 [tool.setuptools.packages.find]
 include = ["src*"]
