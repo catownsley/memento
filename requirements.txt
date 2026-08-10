@@ -2,5 +2,5 @@ anthropic==0.120.2
 psycopg2-binary==2.9.12
 pgvector==0.5.0
 sentence-transformers==5.7.0
-cryptography==48.0.1
+cryptography==50.0.0
 python-dotenv==1.2.2
